@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: ThroneGuard
+  threads:
+    virtual:
+      enabled: true
