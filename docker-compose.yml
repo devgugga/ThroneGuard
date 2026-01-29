@@ -1,0 +1,140 @@
+networks:
+  guard_network:
+    driver: bridge
+    name: guard_network
+
+volumes:
+  postgres_data:
+    driver: local
+    name: guard_postgres_data
+  redis_data:
+    driver: local
+    name: guard_redis_data
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    networks:
+      - guard_network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-512MB}
+      POSTGRES_EFFECTIVE_CACHE: ${POSTGRES_EFFECTIVE_CACHE:-2GB}
+      POSTGRES_USER: ${POSTGRES_USER:-throne_guard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-throne_guard_password}
+      POSTGRES_DB: ${POSTGRES_DB:-throne_guard}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-galaxy_pay} -d ${POSTGRES_DB:-galaxy_pay}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "effective_cache_size=1GB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "work_mem=4MB"
+      - "-c"
+      - "min_wal_size=1GB"
+      - "-c"
+      - "max_wal_size=4GB"
+      - "-c"
+      - "max_worker_processes=4"
+      - "-c"
+      - "max_parallel_workers_per_gather=2"
+      - "-c"
+      - "max_parallel_workers=4"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    networks:
+      - guard_network
+    volumes:
+      - redis_data:/data
+    command:
+      - redis-server
+      - --appendonly yes
+      - --appendfsync everysec
+      - --maxmemory 512mb
+      - --maxmemory-policy allkeys-lru
+      - --save 60 1000
+      - --tcp-keepalive 300
+      - --timeout 0
+      - --tcp-backlog 511
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+
+# ==============================
+# Under Development
+# ==============================
+#  server:
+#    build: ./server
+#    networks:
+#      - guard_network
+#    environment:
+#      JAVA_OPTS: "-Xms512m -Xmx2g -XX:UseG1GC"
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 2560M
+#        reservations:
+#          memory: 512M
+#
+#  client:
+#    build: ./client
+#    networks:
+#      - guard_network
+#    environment:
+#      NODE_OPTIONS: "--max-old-space-size=1024"
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 1536M
+#        reservations:
+#          memory: 512M
