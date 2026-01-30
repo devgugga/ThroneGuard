@@ -1,6 +1,31 @@
 spring:
   application:
     name: ThroneGuard
+    version: 1.0.0
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev} # dev or prod
   threads:
     virtual:
       enabled: true
+  # Hibernate Configuration
+  datasource:
+    # Basic Database configuration
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:throne_guard}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:pwd@123}
+    driver-class-name: org.postgresql.Driver
+    # HikariCP Configuration
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          fetch_size: 50
+logging:
+  level:
+    com.zaxxer.hikari.HikariConfig: DEBUG
